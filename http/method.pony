@@ -9,5 +9,5 @@ primitive TRACE
 primitive PATCH
 
 type Method is (
-    GET | HEAD | POST | PUT | DELETE | CONNECT | OPTIONS | TRACE | PATCH
+  GET | HEAD | POST | PUT | DELETE | CONNECT | OPTIONS | TRACE | PATCH
 )
