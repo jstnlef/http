@@ -1,4 +1,11 @@
-primitive Http
+use "net"
+
+class Client
+  let _auth: TCPConnectionAuth
+
+  new create(auth: TCPConnectionAuth) =>
+    _auth = auth
+
   fun request(method: Method, url: Url): Response =>
     Response
 

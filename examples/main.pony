@@ -1,6 +1,10 @@
+use "net"
 use "../http"
 
 actor Main
   new create(env: Env) =>
-    let resp = Http.get("https://api.github.com/events")
-    env.out.print(resp.string())
+    try
+      let client = Client(env.root as AmbientAuth)
+      let resp = client.get("https://api.github.com/events")
+      env.out.print(resp.string())
+    end
