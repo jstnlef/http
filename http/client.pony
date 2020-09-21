@@ -1,13 +1,13 @@
 use "net"
 
-class Client
+class HTTPClient
   let _auth: TCPConnectionAuth
 
   new create(auth: TCPConnectionAuth) =>
     _auth = auth
 
   fun request(method: Method, url: Url): Response =>
-    Response
+    Response(OK)
 
   fun get(url: String): Response =>
     request(GET, Url(url))
