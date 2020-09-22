@@ -24,14 +24,9 @@ class MyTCPConnectionNotify is TCPConnectionNotify
 
 actor Main
   new create(env: Env) =>
-    // let b = match Continue
-    //   | Stringable => true
-    //   else
-    //     false
-    //   end
-
-    // env.out.print(b)
-    try
-      TCPConnection(env.root as AmbientAuth,
-        recover MyTCPConnectionNotify(env.out) end, "", "5000")
-    end
+    let url = Url("http://www.test.com")
+    env.out.print(url.scheme.string())
+    // try
+    //   TCPConnection(env.root as AmbientAuth,
+    //     recover MyTCPConnectionNotify(env.out) end, "", "5000")
+    // end
