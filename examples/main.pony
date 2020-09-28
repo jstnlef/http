@@ -24,8 +24,16 @@ class MyTCPConnectionNotify is TCPConnectionNotify
 
 actor Main
   new create(env: Env) =>
-    let url = Url("http://www.test.com")
-    env.out.print(url.scheme.string())
+    try
+      let url = Url("http://www.test.com")?
+      env.out.print(url.scheme.string())
+      env.out.print(url.host.string())
+      env.out.print(url.port.string())
+      env.out.print(url.path.string())
+      env.out.print(url.query.string())
+      env.out.print(url.fragment.string())
+      env.out.print(url.string())
+    end
     // try
     //   TCPConnection(env.root as AmbientAuth,
     //     recover MyTCPConnectionNotify(env.out) end, "", "5000")
