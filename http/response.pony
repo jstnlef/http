@@ -1,8 +1,10 @@
 class val Response
-  let _status: Status
+  let status: Status
+  let body: ByteSeq
 
-  new val create(status: Status) =>
-    _status = status
+  new val create(status': Status) =>
+    status = status'
+    body = ""
 
   fun string(): String iso^ =>
-    ("Response(" + _status.code().string() + ")").string()
+    ("Response(" + status.code().string() + ")").string()

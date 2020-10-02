@@ -40,10 +40,10 @@ class val Url
     let string_str = scheme.string()
 
     let len: USize = string_str.size() + 3 + host.size()
-        + 6 + path.size() + 1 + query.size() + 1 + fragment.size()
+      + 6 + path.size() + 1 + query.size() + 1 + fragment.size()
     let s = recover String(len) end
 
-    s.append(scheme.string())
+    s.append(consume string_str)
     s.append("://")
 
     if host.size() > 0 then
@@ -89,6 +89,7 @@ type Scheme is (HTTP | HTTPS)
 type Host is String
 type Port is U16
 type Path is String
+// TODO: This should probably be a map of keys/values
 type Query is String
 type Fragment is String
 

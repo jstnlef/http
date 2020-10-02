@@ -1,40 +1,43 @@
 use "net"
 use "../http"
 
-class MyTCPConnectionNotify is TCPConnectionNotify
-  let _out: OutStream
-
-  new create(out: OutStream) =>
-    _out = out
-
-  fun ref connected(conn: TCPConnection ref) =>
-    conn.write("GET / HTTP/1.1\r\n\r\n")
-
-  fun ref received(
-    conn: TCPConnection ref,
-    data: Array[U8] iso,
-    times: USize
-  ): Bool =>
-    _out.print(String.from_array(consume data))
-    conn.close()
-    true
-
-  fun ref connect_failed(conn: TCPConnection ref) =>
-    None
-
 actor Main
   new create(env: Env) =>
+    let url = "http://localhost:5000"
+
     try
-      let url = Url("http://www.test.com")?
-      env.out.print(url.scheme.string())
-      env.out.print(url.host.string())
-      env.out.print(url.port.string())
-      env.out.print(url.path.string())
-      env.out.print(url.query.string())
-      env.out.print(url.fragment.string())
-      env.out.print(url.string())
+      let client = HttpClient(env.root as AmbientAuth)
+      let futureResp = client.get(url)?
+      futureResp.next[None]({ (r) =>
+        env.out.print(r.string())
+      })
+
+      // TCPConnection(
+      //   env.root as AmbientAuth,
+      //   recover MyTCPConnectionNotify(env.out) end,
+      //   "",
+      //   "5000"
+      // )
     end
-    // try
-    //   TCPConnection(env.root as AmbientAuth,
-    //     recover MyTCPConnectionNotify(env.out) end, "", "5000")
-    // end
+
+
+// class PrintFulfill is Fulfill[String, String]
+//   let _env: Env
+//   let _msg: String
+//   new create(env: Env, msg: String) =>
+//     _env = env
+//     _msg = msg
+//   fun apply(s: String): String =>
+//     _env.out.print(" + ".join([s; _msg].values()))
+//     s
+
+// actor Main
+//   new create(env: Env) =>
+//      let promise = Promise[String]
+//      promise.next[String]({(s: String): String =>
+//       env.out.print("foo")
+//       ""
+//      })
+//      promise.next[String](recover PrintFulfill(env, "bar") end)
+//      promise.next[String](recover PrintFulfill(env, "baz") end)
+//      promise("fulfilled")
