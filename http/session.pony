@@ -1,14 +1,16 @@
+use "collections"
 use "net"
 use "promises"
 
 class Session
   let _auth: TCPConnectionAuth
+  let _connections: Map[String, _Connection] = Map[String, _Connection]
 
   new create(auth: TCPConnectionAuth) =>
     _auth = auth
 
-  fun dispose() =>
-    None
+  fun ref dispose() =>
+    _connections.clear()
 
   fun request(method: Method, url: String): Promise[Response] =>
     try
@@ -16,14 +18,13 @@ class Session
         method,
         Url(url)?
       )
-      let responsePromise = Promise[Response]
-      TCPConnection(
-        _auth,
-        _HTTPConnectionNotify(responsePromise),
-        req.url.host,
-        req.url.port.string()
-      )
-      responsePromise
+
+      // TODO: This needs to fetch from the connections if a connection to a particular
+      // connection identifier already exists.
+      let conn = _Connection(_auth, req.url.host, req.url.port)
+      let promise = Promise[Response]
+      conn.push_req(req, promise)
+      promise
     else
       // Hrmm... I would really like to reject this promise with some value.
       let ret = Promise[Response]

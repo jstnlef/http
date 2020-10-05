@@ -3,16 +3,15 @@ use "promises"
 use "net"
 
 class _HTTPConnectionNotify is TCPConnectionNotify
-  let _responsePromise: Promise[Response]
+  let _conn: _Connection
   let _buffer: Reader = Reader
+  let _parser: Parser = Parser
 
-  new iso create(
-    responsePromise: Promise[Response]
-  ) =>
-    _responsePromise = responsePromise
+  new iso create(conn: _Connection) =>
+    _conn = conn
 
   fun ref connected(conn: TCPConnection ref) =>
-    conn.write("GET / HTTP/1.1\r\n\r\n")
+    _conn.connected(conn)
 
   fun ref received(
     conn: TCPConnection ref,
@@ -20,7 +19,6 @@ class _HTTPConnectionNotify is TCPConnectionNotify
     times: USize
   ): Bool =>
     _buffer.append(consume data)
-    _responsePromise(Response(OK))
     true
 
   fun ref connect_failed(conn: TCPConnection ref) =>

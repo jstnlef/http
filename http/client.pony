@@ -7,6 +7,9 @@ class HttpClient
   new create(auth: TCPConnectionAuth) =>
     _auth = auth
 
+  fun session(): Session =>
+    Session(_auth)
+
   fun request(
     method: Method,
     url: String
@@ -14,8 +17,8 @@ class HttpClient
     // TODO: This might be a compiler bug. I shouldn't neet to instantiate this here.
     // A var ret: Promise[Response] should do just fine but it doesn't...
     var ret = Promise[Response]
-    with session = Session(_auth) do
-      ret = session.request(method, url)
+    with s = session() do
+      ret = s.request(method, url)
     end
     ret
 
