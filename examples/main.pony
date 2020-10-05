@@ -1,3 +1,7 @@
+"""
+Example of fetching a request.
+"""
+
 use "net"
 use "../http"
 
@@ -7,37 +11,13 @@ actor Main
 
     try
       let client = HttpClient(env.root as AmbientAuth)
-      let futureResp = client.get(url)?
-      futureResp.next[None]({ (r) =>
-        env.out.print(r.string())
-      })
-
-      // TCPConnection(
-      //   env.root as AmbientAuth,
-      //   recover MyTCPConnectionNotify(env.out) end,
-      //   "",
-      //   "5000"
-      // )
+      client.get(url)
+        .next[None](
+          {
+            (r) => env.out.print(r.body)
+          },
+          {
+            () => env.err.print("Unable to make request!")
+          }
+        )
     end
-
-
-// class PrintFulfill is Fulfill[String, String]
-//   let _env: Env
-//   let _msg: String
-//   new create(env: Env, msg: String) =>
-//     _env = env
-//     _msg = msg
-//   fun apply(s: String): String =>
-//     _env.out.print(" + ".join([s; _msg].values()))
-//     s
-
-// actor Main
-//   new create(env: Env) =>
-//      let promise = Promise[String]
-//      promise.next[String]({(s: String): String =>
-//       env.out.print("foo")
-//       ""
-//      })
-//      promise.next[String](recover PrintFulfill(env, "bar") end)
-//      promise.next[String](recover PrintFulfill(env, "baz") end)
-//      promise("fulfilled")
