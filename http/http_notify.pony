@@ -1,5 +1,4 @@
 use "buffered"
-use "promises"
 use "net"
 
 class _HTTPConnectionNotify is TCPConnectionNotify
@@ -22,7 +21,7 @@ class _HTTPConnectionNotify is TCPConnectionNotify
     true
 
   fun ref connect_failed(conn: TCPConnection ref) =>
-    None
+    _conn.connect_failed(conn)
 
   fun ref closed(conn: TCPConnection ref) =>
     _buffer.clear()

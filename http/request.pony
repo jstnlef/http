@@ -1,3 +1,4 @@
+use "buffered"
 use "collections"
 
 
@@ -17,6 +18,12 @@ class val Request
     url = url'
     body = body'
     // headers = headers'
+
+  fun serialize(): Array[ByteSeq] val =>
+    // TODO: This needs to be cleverer
+    let writer = Writer
+    writer.write("GET / HTTP/1.1\r\n\r\n")
+    writer.done()
 
 
 type Headers is (Map[String, String] | None)
