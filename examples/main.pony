@@ -4,6 +4,7 @@ Example of fetching a request.
 
 use "net"
 use "../http"
+use "promises"
 
 actor Main
   new create(env: Env) =>
@@ -11,13 +12,7 @@ actor Main
 
     try
       let client = HttpClient(env.root as AmbientAuth)
-      client.get(url)
-        .next[None](
-          {
-            (r) => env.out.print(r.body)
-          },
-          {
-            () => env.err.print("Unable to make request!")
-          }
-        )
+      client.get(url)?.next[None]({(resp) =>
+        env.out.print(resp.body)
+      })
     end

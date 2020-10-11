@@ -12,11 +12,11 @@ class Session
   fun ref dispose() =>
     _connections.clear()
 
-  fun request(req: Request val): Promise[Response] =>
+  fun request(req: Request val): Promise[Response val] =>
     // TODO: This needs to fetch from the connections if a connection to a particular
     // connection identifier already exists.
     let conn_id = _ConnectionId(req.url)
     let conn = _Connection(_auth, conn_id)
-    let response = Promise[Response]
+    let response = Promise[Response val]
     conn.send_req(consume req, response)
     response

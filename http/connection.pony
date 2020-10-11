@@ -13,7 +13,7 @@ actor _Connection
     _auth = auth
     _connection_id = conn_id
 
-  be send_req(req: Request val, promise: Promise[Response]) =>
+  be send_req(req: Request val, promise: Promise[Response val]) =>
     _pending.push(_RequestWithPromise(consume req, promise))
     _send_pending()
 
@@ -23,6 +23,9 @@ actor _Connection
 
   be connect_failed(conn: TCPConnection) =>
     _tcp_conn = None
+
+  be received(response: Response val) =>
+    None
 
   fun ref _send_pending() =>
     try
@@ -55,9 +58,9 @@ primitive _Connecting
 
 class _RequestWithPromise
   let req: Request val
-  let resp: Promise[Response]
+  let resp: Promise[Response val]
 
-  new create(req': Request val, resp': Promise[Response]) =>
+  new create(req': Request val, resp': Promise[Response val]) =>
     req = req'
     resp = resp'
 

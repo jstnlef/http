@@ -10,16 +10,16 @@ class HttpClient
   fun session(): Session =>
     Session(_auth)
 
-  fun request(req: Request val): Promise[Response] =>
+  fun request(req: Request val): Promise[Response val] =>
     // // TODO: This might be a compiler bug. I shouldn't neet to instantiate this here.
     // // A var ret: Promise[Response] should do just fine but it doesn't...
-    var ret = Promise[Response]
+    var ret = Promise[Response val]
     with s = session() do
       ret = s.request(consume req)
     end
     ret
 
-  fun get(url: String): Promise[Response]? =>
+  fun get(url: String): Promise[Response val]? =>
     let u = Url(url)?
     request(Request(GET, u))
 

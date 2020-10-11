@@ -4,7 +4,7 @@ use "net"
 class _HTTPConnectionNotify is TCPConnectionNotify
   let _conn: _Connection
   let _buffer: Reader = Reader
-  let _parser: Parser = Parser
+  let _parser: Parser = Parser.response()
 
   new iso create(conn: _Connection) =>
     _conn = conn
@@ -18,7 +18,19 @@ class _HTTPConnectionNotify is TCPConnectionNotify
     times: USize
   ): Bool =>
     _buffer.append(consume data)
-    true
+
+    let parseStatus = _parser.parse(_buffer)
+    match parseStatus
+      | let s: ParseComplete =>
+        let completed = _parser.completed_response()
+        _conn.received(completed)
+        false
+      | let s: ParseError =>
+        // TODO: Do something interesting about a parse error here.
+        false
+    else
+      true
+    end
 
   fun ref connect_failed(conn: TCPConnection ref) =>
     _conn.connect_failed(conn)

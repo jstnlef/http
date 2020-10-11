@@ -4,45 +4,34 @@ use "encode/base64"
 
 
 class Parser
-//   var _state: _ParsingState
-//   var _expected_length: USize = 0
-//   var _chunk_end: Bool = false
-//   var _delivered: Bool = false
+  var _response: Response iso = Response
 
-//   new request() =>
-//     _expected_length = 0
-//     _chunk_end = false
-//     _state = _ExpectRequest
+  var _state: _ParsingState
+  var _length: USize = 0
 
-//   new response() =>
-//     _expected_length = 0
-//     _chunk_end = false
-//     _state = _ExpectResponse
+  new request(length: USize = 0) =>
+    _length = length
+    _state = _ExpectRequest
 
-//   fun ref parse(buffer: Reader): (ParseError | None) =>
-//     """
-//     Analyze new data based on the parser's current internal state.
-//     """
-//     match _state
-//     | _ExpectRequest => _parse_request(buffer)
-//     | _ExpectResponse => _parse_response(buffer)
-//     | _ExpectHeaders => _parse_headers(buffer)
-//     | _ExpectBody =>
-//         // We are expecting a message body. Now we decide exactly
-//         // which encoding to look for.
-//         match _transfer_mode
-//         | ChunkedTransfer =>
-//           _state = _ExpectChunkStart
-//           _parse_chunk_start(buffer)
-//         else
-//           _state = _ExpectContentLength
-//           _parse_content_length(buffer)
-//         end
-//     | _ExpectChunkStart => _parse_chunk_start(buffer)
-//     | _ExpectChunk => _parse_chunk(buffer)
-//     | _ExpectChunkEnd => _parse_chunk_end(buffer)
-//     | _ExpectContentLength => _parse_content_length(buffer)
-//     end
+  new response(length: USize = 0) =>
+    _length = length
+    _state = _ExpectResponse
+
+  fun ref completed_response(): Response val =>
+    let completed = _response = Response
+    consume completed
+
+  fun ref parse(buffer: Reader): ParseResult =>
+    match _state
+      // | _ExpectRequest => _parse_request(buffer)
+      | _ExpectResponse => _parse_response(buffer)
+      | _ExpectHeaders => _parse_headers(buffer)
+      | _ExpectBody => _parse_body(buffer)
+      | _ExpectContentLength => _parse_content_length(buffer)
+    else
+      ParseError
+    end
+
 
 //   fun ref _deliver() =>
 //     """
@@ -97,103 +86,79 @@ class Parser
 //       end
 //     end
 
-//   fun ref _parse_request(buffer: Reader): (ParseError | None) =>
-//     """
-//     Look for "<Method> <URL> <Proto>", the first line of an HTTP
-//     'request' message.
-//     """
-//     // Reset expectations
-//     _expected_length = 0
-//     _transfer_mode = OneshotTransfer
-//     _payload.session = _session
+  // fun ref _parse_request(buffer: Reader): (ParseError | None) =>
+  //   """
+  //   Look for "<Method> <URL> <Proto>", the first line of an HTTP
+  //   'request' message.
+  //   """
+  //   try
+  //     let line = buffer.line()?
+  //     let method_end = line.find(" ")?
+  //     _payload.method = line.substring(0, method_end)
 
-//     try
-//       let line = buffer.line()?
-//       let method_end = line.find(" ")?
-//       _payload.method = line.substring(0, method_end)
+  //     let url_end = line.find(" ", method_end + 1)?
+  //     _payload.url = URL.valid(line.substring(method_end + 1, url_end))?
+  //     _payload.proto = line.substring(url_end + 1)
 
-//       let url_end = line.find(" ", method_end + 1)?
-//       _payload.url = URL.valid(line.substring(method_end + 1, url_end))?
-//       _payload.proto = line.substring(url_end + 1)
+  //     _state = _ExpectHeaders
+  //     parse(buffer)
+  //   else
+  //     ParseError
+  //   end
 
-//       _state = _ExpectHeaders
-//       parse(buffer)
-//     else
-//       ParseError
-//     end
+  fun ref _parse_response(buffer: Reader): ParseResult =>
+    """
+    Look for "<Proto> <Code> <Description>", the first line of an
+    HTTP 'response' message.
+    """
+    try
+      let line = buffer.line()?
 
-//   fun ref _parse_response(buffer: Reader): (ParseError | None) =>
-//     """
-//     Look for "<Proto> <Code> <Description>", the first line of an
-//     HTTP 'response' message.
-//     """
-//     // Reset expectations
-//     _expected_length = 0
-//     _transfer_mode = OneshotTransfer
-//     _payload.session = _session
+      let proto_end = line.find(" ")?
+      _response.proto = line.substring(0, proto_end)
+      _response.status = StatusParser.parse(line.read_int[U16](proto_end + 1)?._1)?
 
-//     try
-//       let line = buffer.line()?
+      _state = _ExpectHeaders
+      parse(buffer)
+    else
+      ParseError
+    end
 
-//       let proto_end = line.find(" ")?
-//       _payload.proto = line.substring(0, proto_end)
-//       _payload.status = line.read_int[U16](proto_end + 1)?._1
+  fun ref _parse_headers(buffer: Reader): ParseResult =>
+    """
+    Look for: "<Key>:<Value>" or the empty line that marks the end of
+    all the headers.
+    """
+    while true do
+      // Try to get another line out of the available buffer.
+      // If this fails it is not a syntax error; we just wait for more.
+      try
+        let line = buffer.line()?
+        if line.size() == 0 then
+          // An empty line marks the end of the headers. Set state
+          // appropriately.
+          _set_header_end()
+          parse(buffer)
+        else
+          // A non-empty line *must* be a header. error if not.
+          try
+            _process_header(consume line)?
+          else
+            return ParseError
+          end
+        end
+      else
+        return ParseInProgress
+      end
+    end
+    ParseError
 
-//       let status_end = line.find(" ", proto_end + 1)?
-//       _payload.method = line.substring(status_end + 1)
-
-//       _state = _ExpectHeaders
-//       parse(buffer)
-//     else
-//       ParseError
-//     end
-
-//   fun ref _parse_headers(buffer: Reader): (ParseError | None) =>
-//     """
-//     Look for: "<Key>:<Value>" or the empty line that marks the end of
-//     all the headers.
-//     """
-//     while true do
-//       // Try to get another line out of the available buffer.
-//       // If this fails it is not a syntax error; we just wait for more.
-//       try
-//         let line = buffer.line()?
-//         if line.size() == 0 then
-//           // An empty line marks the end of the headers. Set state
-//           // appropriately.
-//           _set_header_end()
-
-//           // deliver for empty responses, chunked or streamed transfer
-//           // accumulate the body in the Payload for OneshotTransfer
-//           match _payload.transfer_mode
-//           | OneshotTransfer if _state isnt _ExpectBody => _deliver()
-//           | StreamTransfer =>                             _deliver()
-//           | ChunkedTransfer =>                            _deliver()
-//           end
-//           parse(buffer)
-//         else
-//           // A non-empty line *must* be a header. error if not.
-//           try
-//             _process_header(consume line)?
-//           else
-//             _state = _ExpectError
-//             break
-//           end
-//         end // line-size check
-//       else
-//         // Failed to get a line. We stay in _ExpectHeader state.
-//         return
-//       end // try
-//     end // looping over all headers in this buffer
-
-//     // Breaking out of that loop means an error.
-//     if _state is _ExpectError then ParseError end
-
-//   fun ref _process_header(line: String) ? =>
-//     """
-//     Save a header value. Raise an error on not finding the colon
-//     or can't interpret the value.
-//     """
+  fun ref _process_header(line: String)? =>
+    """
+    Save a header value. Raise an error on not finding the colon
+    or can't interpret the value.
+    """
+    error
 //     let i = line.find(":")?
 //     let key = line.substring(0, i)
 //     key.strip()
@@ -253,39 +218,35 @@ class Parser
 //       end
 //     end
 
-//   fun ref _set_header_end() =>
-//     """
-//     Line size is zero, so we have reached the end of the headers.
-//     Certain status codes mean there is no body.
-//     """
-//     if
-//       (_payload.status == 204) // no content
-//         or (_payload.status == 304) // not modified
-//         or ((_payload.status > 0) and (_payload.status < 200))
-//     then
-//       _state = _ExpectReady
-//     else
-//       // If chunked mode or length>0 then some body data will follow.
-//       // In any case we can pass the completed `Payload` on to the
-//       // session for processing.
-//       _state = match _payload.transfer_mode
-//       | ChunkedTransfer =>
-//         _ExpectChunkStart
-//       else
-//         if _expected_length == 0 then
-//           _ExpectReady
-//         else
-//           _ExpectBody
-//         end
-//       end
-//     end // else no special status
+  fun ref _set_header_end() =>
+    """
+    Line size is zero, so we have reached the end of the headers.
+    Certain status codes mean there is no body.
+    """
+    if
+      (_response.status is NoContent)
+        or (_response.status is NotModified)
+        or ((_response.status.code() > 0) and (_response.status.code() < 200))
+    then
+      _state = _ExpectReady
+    else
+      if _length == 0 then
+          _ExpectReady
+        else
+          _ExpectBody
+        end
+    end
 
-//   fun ref _parse_content_length(buffer: Reader) =>
-//     """
-//     Look for `_expected_length` bytes set by having seen a `Content-Length`
-//     header. We may not see it all at once but we process the lesser of
-//     what we need and what is available in the buffer.
-//     """
+  fun ref _parse_body(buffer: Reader): ParseResult =>
+    ParseError
+
+  fun ref _parse_content_length(buffer: Reader): ParseResult =>
+    """
+    Look for `_expected_length` bytes set by having seen a `Content-Length`
+    header. We may not see it all at once but we process the lesser of
+    what we need and what is available in the buffer.
+    """
+    ParseError
 //     let available = buffer.size()
 //     let usable = available.min(_expected_length)
 
@@ -393,31 +354,29 @@ class Parser
 //     end
 
 
-// // The parser internal state indicates what it expects to see next
-// // in the input stream.
+// The parser internal state indicates what it expects to see next
+// in the input stream.
 
-// primitive _ExpectRequest
-// primitive _ExpectResponse
-// primitive _ExpectHeaders
-// primitive _ExpectContentLength
-// primitive _ExpectChunkStart
-// primitive _ExpectChunk
-// primitive _ExpectChunkEnd
-// primitive _ExpectBody
-// primitive _ExpectReady
-// primitive _ExpectError
+primitive _ExpectRequest
+primitive _ExpectResponse
+primitive _ExpectHeaders
+primitive _ExpectContentLength
+primitive _ExpectBody
+primitive _ExpectReady
+primitive _ExpectError
 
-// type _ParsingState is
-//   ( _ExpectRequest       // Request method and URL
-//   | _ExpectResponse      // Response status
-//   | _ExpectHeaders       // More headers
-//   | _ExpectContentLength // Body text, limited by Content-Length
-//   | _ExpectChunkStart    // The start of a 'chunked' piece of body text
-//   | _ExpectChunk         // More of a continuing body 'chunk'
-//   | _ExpectChunkEnd      // The CRLF at the end of a 'chunk'
-//   | _ExpectBody          // Any body, which might not be there
-//   | _ExpectReady         // All done with the message
-//   | _ExpectError         // Not valid HTTP format
-//   )
+type _ParsingState is
+  ( _ExpectRequest       // Request method and URL
+  | _ExpectResponse      // Response status
+  | _ExpectHeaders       // More headers
+  | _ExpectContentLength // Body text, limited by Content-Length
+  | _ExpectBody          // Any body, which might not be there
+  | _ExpectReady         // All done with the message
+  | _ExpectError         // Not valid HTTP format
+  )
 
-// primitive ParseError
+primitive ParseComplete
+primitive ParseInProgress
+primitive ParseError
+
+type ParseResult is (ParseComplete | ParseInProgress | ParseError)
