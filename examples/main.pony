@@ -8,11 +8,12 @@ use "promises"
 
 actor Main
   new create(env: Env) =>
-    let url = "http://localhost:5000"
-
     try
       let client = HttpClient(env.root as AmbientAuth)
-      client.get(url)?.next[None]({(resp) =>
+      let url = Url("http://localhost:5000")?
+      client.get(url).next[None]({(resp) =>
+        env.out.print(resp.protocol)
+        env.out.print(resp.status.string())
         env.out.print(resp.body)
       })
     end

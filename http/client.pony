@@ -19,9 +19,8 @@ class HttpClient
     end
     ret
 
-  fun get(url: String): Promise[Response val]? =>
-    let u = Url(url)?
-    request(Request(GET, u))
+  fun get(url: Url): Promise[Response val] =>
+    request(Request(GET, url))
 
   // fun head(url: String): Promise[Response] =>
   //   request(HEAD, url)

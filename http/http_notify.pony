@@ -21,12 +21,12 @@ class _HTTPConnectionNotify is TCPConnectionNotify
 
     let parseStatus = _parser.parse(_buffer)
     match parseStatus
-      | let s: ParseComplete =>
+      | ParseComplete =>
         let completed = _parser.completed_response()
         _conn.received(completed)
         false
-      | let s: ParseError =>
-        // TODO: Do something interesting about a parse error here.
+      | let err: ParseError =>
+        _conn.parse_error(err)
         false
     else
       true

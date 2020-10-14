@@ -25,6 +25,13 @@ actor _Connection
     _tcp_conn = None
 
   be received(response: Response val) =>
+    try
+      let resp = _awaiting_response.shift()?
+      resp.resp(response)
+    end
+
+  be parse_error(err: ParseError) =>
+    // TODO: Do something interesting about a parse error here.
     None
 
   fun ref _send_pending() =>
